@@ -67,9 +67,8 @@ if ! find_a_hasher ; then
   exit 1
 fi
 
-mkdir "$WORKING_DIR"
-mkdir "$LOGGING_DIR"
-mkdir "$QUEUE_DIR"
+mkdir -p "$LOGGING_DIR"
+mkdir -p "$QUEUE_DIR"
 
 function process_queue() {
   echo "processing queue"
