@@ -20,7 +20,7 @@ function hash_with_shasum() {
 function hash_with_openssl() {
   if which openssl > /dev/null 2>&1 ; then
     function hasher() {
-      openssl sha "${1}" | sed -e 's[SHA\(.*\)= [[g'
+      openssl sha "${1}" | sed -e 's[SHA(.*)= [[g' -e 's[(stdin)= [[g'
     }
     return 0
   fi
@@ -71,27 +71,51 @@ mkdir -p "$LOGGING_DIR"
 mkdir -p "$QUEUE_DIR"
 
 function process_queue() {
-  WORKING_DIR="${1}"
+  QUEUE_DIR="${1}"
+  LOG_DIR="${2}"
+  DID_SOMETHING=
   echo "processing queue"
-  # for each file in the queue dir (dictionary order) that are executable
-  # execute the command storing the output in a log file in the logging dir
-  # log file will be logging_dir/full_path_to_executable_with_slashes_replaced.log
-  #   or in the case of a string command, the hash (I know, sorry).
-  # return 0 if we processed any files, otherwise 1
+  pushd $QUEUE_DIR > /dev/null 2>&1
+  for command in $QUEUE_DIR/*
+  do
+    [ -x "${command}" ] || continue
+    FILE_NAME=$(basename "${command}")
+    LOG_FILE=${LOG_DIR}/${FILE_NAME}
+    echo "*** start " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
+    $command >> ${LOG_FILE} 2>&1
+    echo "*** end " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
+  done
+  [ -z "$DID_SOMETHING" ] && return 1
+  return 0
+}
+
+function export_environment(){
+  # rewrite our environment as a series of variable declarations followed by their associated exports
+  env | cut -f 1,2- --output-delimiter="=" -d= | sed -e "s[\(^\w*\)=\(.*$\)[\1='\2'; export \1;[g"
 }
 
 function enqueue_command(){
   COMMAND="${1}"
   echo "enqueuing command:"
   echo "${1}"
-  # create a command file as queue_dir/full_path_to_executable_with_slashes_replaced.log
-  #   or in the case of a string command, the hash
-  # write a shebang for bash
-  # write to the file the enqueue time as a comment
-  # write out the environment variable assignments from the calling environment
-  # write the command
-  # make the command executable
-  # return 0, or 1 if there is any sort of error
+  if [ -x "$COMMAND" ]; then
+    # we have a file
+    FILE_NAME=$(echo $COMMAND | sed -e 's[\/[_[g')
+    echo "### enqueued " $(date +"%x %X") > $FILE_NAME
+    export_environment >> $FILE_NAME
+    echo $COMMAND >> $FILE_NAME
+  else
+    # it's on stdin
+    TEMP_FILE=$(mktemp)
+    trap "[ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
+    echo "### enqueued " $(date +"%x %X") > $TEMP_FILE
+    export_environment >> $TEMP_FILE
+    cat >> $TEMP_FILE
+    FILE_NAME=$(hasher $TEMP_FILE)
+    mv "$TEMP_FILE" "$FILE_NAME"
+  fi
+  chmod +x $FILE_NAME
+  echo "file: " $FILE_NAME
 }
 
 case "${1}" in
@@ -115,7 +139,7 @@ case "${1}" in
       fi
       # last place to look for a command is stdin
       if read -t 0; then
-        COMMAND=$(cat)
+        COMMAND="STDIN"
       fi
     fi
     if [ -z "${COMMAND}" ]; then
