@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 # vim: ft=sh
 
-WORKING_DIR="${Q_WORKING_DIR:-~/.uni-q}"
+WORKING_DIR=${Q_WORKING_DIR:-~/.uni-q}
 LOGGING_DIR="${WORKING_DIR}/command_logs"
 QUEUE_DIR="${WORKING_DIR}/queue"
 
@@ -67,16 +67,17 @@ if ! find_a_hasher ; then
   exit 1
 fi
 
-
-mkdir -p $LOGGING_DIR
-mkdir -p $QUEUE_DIR
+mkdir "$WORKING_DIR"
+mkdir "$LOGGING_DIR"
+mkdir "$QUEUE_DIR"
 
 function process_queue() {
   echo "processing queue"
 }
 
 function enqueue_command(){
-  echo "enqueuing command: ${1}"
+  echo "enqueuing command:"
+  echo "${1}"
 }
 
 case "${1}" in
