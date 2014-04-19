@@ -20,7 +20,7 @@ function hash_with_shasum() {
 function hash_with_openssl() {
   if which openssl > /dev/null 2>&1 ; then
     function hasher() {
-      openssl sha "${1}" | sed -e 's[SHA(.*)= [[g' -e 's[(stdin)= [[g'
+      openssl sha "${1}" | sed -e 's[SHA(.*)= [[g'
     }
     return 0
   fi
@@ -100,7 +100,7 @@ function enqueue_command(){
   echo "${1}"
   if [ -x "$COMMAND" ]; then
     # we have a file
-    FILE_NAME=$(echo $COMMAND | sed -e 's[\/[_[g')
+    FILE_NAME=${QUEUE_DIR}/$(echo $COMMAND | sed -e 's[\/[_[g')
     echo "### enqueued " $(date +"%x %X") > $FILE_NAME
     export_environment >> $FILE_NAME
     echo $COMMAND >> $FILE_NAME
@@ -111,7 +111,7 @@ function enqueue_command(){
     echo "### enqueued " $(date +"%x %X") > $TEMP_FILE
     export_environment >> $TEMP_FILE
     cat >> $TEMP_FILE
-    FILE_NAME=$(hasher $TEMP_FILE)
+    FILE_NAME=${QUEUE_DIR}/$(hasher $TEMP_FILE)
     mv "$TEMP_FILE" "$FILE_NAME"
   fi
   chmod +x $FILE_NAME
