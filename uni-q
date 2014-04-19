@@ -71,12 +71,27 @@ mkdir -p "$LOGGING_DIR"
 mkdir -p "$QUEUE_DIR"
 
 function process_queue() {
+  WORKING_DIR="${1}"
   echo "processing queue"
+  # for each file in the queue dir (dictionary order) that are executable
+  # execute the command storing the output in a log file in the logging dir
+  # log file will be logging_dir/full_path_to_executable_with_slashes_replaced.log
+  #   or in the case of a string command, the hash (I know, sorry).
+  # return 0 if we processed any files, otherwise 1
 }
 
 function enqueue_command(){
+  COMMAND="${1}"
   echo "enqueuing command:"
   echo "${1}"
+  # create a command file as queue_dir/full_path_to_executable_with_slashes_replaced.log
+  #   or in the case of a string command, the hash
+  # write a shebang for bash
+  # write to the file the enqueue time as a comment
+  # write out the environment variable assignments from the calling environment
+  # write the command
+  # make the command executable
+  # return 0, or 1 if there is any sort of error
 }
 
 case "${1}" in
