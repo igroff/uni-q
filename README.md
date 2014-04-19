@@ -26,8 +26,9 @@ Return Codes
   * 0 - command enqueued successfully
   * 1 - invalid command file specified ( file does not exist )
 
-
+```
     uni-q process
+```
 
 Processes all items in the queue in dictionary order of the command names. 
 
