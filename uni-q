@@ -13,7 +13,6 @@ ERR_COMMAND_EXISTS=3
 ERR_INVALID_PARAM=4
 ERR_NO_COMMAND=5
 
-
 #############################################################################
 ## Utils
 function error(){ echo $1 >&2; }
@@ -78,7 +77,8 @@ function find_a_hasher() {
 if ! mkdir ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
   die "Unable to acquire lock" $ERR_LOCK
 fi
-# clean up our lock
+
+# clean up our lock on exit
 trap "rm -rf ${PROCESS_LOCK_DIR}" EXIT
 
 if ! find_a_hasher ; then
