@@ -97,6 +97,10 @@ function export_environment(){
   env | cut -f 1,2- --output-delimiter="=" -d= | sed -e "s[\(^\w*\)=\(.*$\)[\1='\2'; export \1;[g"
 }
 
+function generate_queue_stamp(){
+    echo "### enqueued " $(date +"%x %X") 
+}
+
 function enqueue_command(){
   local COMMAND="${1}"
   local QUEUE_DIR="${2}"
@@ -104,18 +108,18 @@ function enqueue_command(){
     # we have a file
     FILE_NAME=${QUEUE_DIR}/$(echo $COMMAND | sed -e 's[\/[_[g')
     [ -x "$FILE_NAME" ] && die "command already queued" 4
-    export_environment >> $FILE_NAME
+    export_environment > $FILE_NAME
     echo $COMMAND >> $FILE_NAME
-    echo "### enqueued " $(date +"%x %X") >> $FILE_NAME
+    generate_queue_stamp >> $FILE_NAME
   else
     # it's on stdin
     TEMP_FILE=$(mktemp)
     trap "[ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
-    export_environment >> $TEMP_FILE
+    export_environment > $TEMP_FILE
     cat >> $TEMP_FILE
     FILE_NAME=${QUEUE_DIR}/$(hasher $TEMP_FILE)
     [ -x "$FILE_NAME" ] && die "command already queued" 4
-    echo "### enqueued " $(date +"%x %X") >> $TEMP_FILE
+    generate_queue_stamp >> $TEMP_FILE
     mv "$TEMP_FILE" "$FILE_NAME"
   fi
   chmod +x $FILE_NAME
