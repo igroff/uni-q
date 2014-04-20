@@ -5,6 +5,8 @@ WORKING_DIR=${Q_WORKING_DIR:-~/.uni-q}
 LOGGING_DIR="${WORKING_DIR}/command_logs"
 QUEUE_DIR="${WORKING_DIR}/queue"
 PROCESSED_COMMAND_DIR="${WORKING_DIR}/processed"
+PROCESS_LOCK_DIR="${WORKING_DIR}/lock.dir"
+
 
 #############################################################################
 ## Utils
@@ -66,6 +68,13 @@ function find_a_hasher() {
 
 #############################################################################
 # The Program!
+
+if ! mkdir ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
+  die "Unable to acquire lock", 6  
+fi
+# clean up our lock
+trap "rm -rf ${PROCESS_LOCK_DIR}" EXIT
+
 if ! find_a_hasher ; then
   error 'I could not find a hash provider!'
   exit 1
