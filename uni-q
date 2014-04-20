@@ -4,6 +4,7 @@
 WORKING_DIR=${Q_WORKING_DIR:-~/.uni-q}
 LOGGING_DIR="${WORKING_DIR}/command_logs"
 QUEUE_DIR="${WORKING_DIR}/queue"
+PROCESSED_COMMAND_DIR="${WORKING_DIR}/processed"
 
 #############################################################################
 ## Utils
@@ -72,6 +73,7 @@ fi
 
 mkdir -p "$LOGGING_DIR"
 mkdir -p "$QUEUE_DIR"
+mkdir -p "$PROCESSED_COMMAND_DIR"
 
 function process_queue() {
   local QUEUE_DIR="${1}"
@@ -86,6 +88,7 @@ function process_queue() {
     echo "*** start " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
     $command >> ${LOG_FILE} 2>&1
     echo "*** end " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
+    mv "${command}" "${PROCESSED_COMMAND_DIR}/${FILE_NAME}.$(date +"%s")"
     DID_SOMETHING=YES
   done
   [ -z "$DID_SOMETHING" ] && return 1
