@@ -7,6 +7,12 @@ QUEUE_DIR="${WORKING_DIR}/queue"
 PROCESSED_COMMAND_DIR="${WORKING_DIR}/processed"
 PROCESS_LOCK_DIR="${WORKING_DIR}/lock.dir"
 
+ERR_DEPENDENCY=1
+ERR_LOCK=2
+ERR_COMMAND_EXISTS=3
+ERR_INVALID_PARAM=4
+ERR_NO_COMMAND=5
+
 
 #############################################################################
 ## Utils
@@ -70,14 +76,13 @@ function find_a_hasher() {
 # The Program!
 
 if ! mkdir ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
-  die "Unable to acquire lock", 6  
+  die "Unable to acquire lock" $ERR_LOCK
 fi
 # clean up our lock
 trap "rm -rf ${PROCESS_LOCK_DIR}" EXIT
 
 if ! find_a_hasher ; then
-  error 'I could not find a hash provider!'
-  exit 1
+  die 'I could not find a hash provider!' $ERR_DEPENDENCY
 fi
 
 mkdir -p "$LOGGING_DIR"
@@ -119,7 +124,7 @@ function enqueue_command(){
   if [ -x "$COMMAND" ]; then
     # we have a file
     FILE_NAME=${QUEUE_DIR}/$(echo $COMMAND | sed -e 's[\/[_[g')
-    [ -x "$FILE_NAME" ] && die "command already queued" 4
+    [ -x "$FILE_NAME" ] && die "command already queued" $ERR_COMMAND_EXISTS
     export_environment > $FILE_NAME
     echo $COMMAND >> $FILE_NAME
     generate_queue_stamp >> $FILE_NAME
@@ -130,7 +135,7 @@ function enqueue_command(){
     export_environment > $TEMP_FILE
     cat >> $TEMP_FILE
     FILE_NAME=${QUEUE_DIR}/$(hasher $TEMP_FILE)
-    [ -x "$FILE_NAME" ] && die "command already queued" 4
+    [ -x "$FILE_NAME" ] && die "command already queued" $ERR_COMMAND_EXISTS
     generate_queue_stamp >> $TEMP_FILE
     mv "$TEMP_FILE" "$FILE_NAME"
   fi
@@ -149,11 +154,10 @@ case "${1}" in
       # get us an absolute path to the command
       [[ "${COMMAND}" == \/* ]] || COMMAND=$(pwd)/${COMMAND}
     elif [ -n "${1}" ]; then
-      error "The parameter provided doesn't appear to refer to a an executable file"
-      die "You gave me: ${1}" 1
+      die "The parameter provided doesn't appear to refer to a an executable file, you gave me: ${1}" $ERR_INVALID_PARAM
     else
       if [ -t 0 ]; then
-        die "You need to provide a command either via stdin or as file on the command line." 2
+        die "You need to provide a command either via stdin or as file on the command line." $ERR_NO_COMMAND
       fi
       # last place to look for a command is stdin
       if read -t 0; then
@@ -161,7 +165,7 @@ case "${1}" in
       fi
     fi
     if [ -z "${COMMAND}" ]; then
-      die "I could not find any commands, sorry" 3
+      die "I could not find any commands, sorry" $ERR_NO_COMMAND
     fi
     enqueue_command "${COMMAND}" "${QUEUE_DIR}"
     exit
