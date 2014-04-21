@@ -98,7 +98,7 @@ function process_queue() {
   do
     [ -x "${command}" ] || continue
     FILE_NAME=$(basename "${command}")
-    LOG_FILE=${LOG_DIR}/${FILE_NAME}
+    LOG_FILE=${LOG_DIR}/${FILE_NAME}.log
     echo "*** start " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
     $command >> ${LOG_FILE} 2>&1
     echo "*** end " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
