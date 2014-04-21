@@ -117,7 +117,7 @@ function export_environment(){
 }
 
 function generate_queue_stamp(){
-    echo "### enqueued " $(date +"%x %X") 
+    echo "### command enqueued by uni-q " $(date +"%x %X") 
 }
 
 function enqueue_command(){
@@ -128,7 +128,10 @@ function enqueue_command(){
     FILE_NAME=${QUEUE_DIR}/$(echo $COMMAND | sed -e 's[\/[_[g')
     [ -x "$FILE_NAME" ] && die "command already queued" $ERR_COMMAND_EXISTS
     export_environment > $FILE_NAME
+    echo "####################################################################" >> $FILE_NAME
+    echo "# Command" >> $FILE_NAME
     echo $COMMAND >> $FILE_NAME
+    echo "####################################################################" >> $FILE_NAME
     generate_queue_stamp >> $FILE_NAME
   else
     # it's on stdin
