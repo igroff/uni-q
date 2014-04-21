@@ -105,7 +105,9 @@ function process_queue() {
     mv "${command}" "${PROCESSED_COMMAND_DIR}/${FILE_NAME}.$(date +"%s")"
     DID_SOMETHING=YES
   done
+  # if we didn't run any commands, we tell our caller 1
   [ -z "$DID_SOMETHING" ] && return 1
+  # if we did run some commands, we tell our caller 0
   return 0
 }
 
