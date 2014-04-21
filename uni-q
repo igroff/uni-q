@@ -138,7 +138,10 @@ function enqueue_command(){
     TEMP_FILE=$(mktemp)
     trap "[ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
     export_environment > $TEMP_FILE
+    echo "####################################################################" >> $TEMP_FILE
+    echo "# Command" >> $TEMP_FILE
     cat >> $TEMP_FILE
+    echo "####################################################################" >> $TEMP_FILE
     FILE_NAME=${QUEUE_DIR}/$(hasher $TEMP_FILE)
     [ -x "$FILE_NAME" ] && die "command already queued" $ERR_COMMAND_EXISTS
     generate_queue_stamp >> $TEMP_FILE
