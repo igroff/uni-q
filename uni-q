@@ -162,6 +162,10 @@ case "${1}" in
     process_queue ${QUEUE_DIR} ${LOGGING_DIR}
     exit
     ;;
+  "show")
+    ls -larth ${QUEUE_DIR} | grep -v -e '[[:space:]]\.\.$' | grep -v -e '[[:space:]]\.$'
+    exit
+    ;;
   *)
     if [ -n "${1}" -a -f "${1}" -a -x "${1}" ]; then
       COMMAND="${1}"
