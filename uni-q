@@ -112,7 +112,7 @@ function process_queue() {
 }
 
 function export_environment(){
-  if echo ${OSTYPE} | grep darwin
+  if echo ${OSTYPE} | grep darwin > /dev/null 2>&1
   then
     # rewrite our environment as a series of variable declarations followed by their associated exports
     env | sed -E -e 's|^(.*)=(.*)$|export \1="\2";|g'
