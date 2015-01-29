@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 # vim: ft=sh
-
+set -e
 #############################################################################
 ###  ${ME} is used to enqueue an executable 'command' for execution at a 
 ###  later date.  Specifically it's designed to attempt to enqueue any
@@ -127,8 +127,13 @@ if ! mkdir ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
   die "Unable to acquire lock ${PROCESS_LOCK_DIR}" $ERR_LOCK
 fi
 
+function clear_lock(){
+  rm -rf ${PROCESS_LOCK_DIR}
+  exit
+}
+
 # clean up our lock on exit
-trap "rm -rf ${PROCESS_LOCK_DIR}" EXIT
+trap clear_lock EXIT
 
 if ! find_a_hasher ; then
   die 'I could not find a hash provider!' $ERR_DEPENDENCY
@@ -219,7 +224,7 @@ function enqueue_command(){
   else
     # it's on stdin
     TEMP_FILE=$(mktemp -t uniq-temp-XXXXX)
-    trap "[ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
+    trap "clear_lock ; [ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
     export_environment > $TEMP_FILE
     echo "####################################################################" >> $TEMP_FILE
     echo "# Command" >> $TEMP_FILE
@@ -234,6 +239,7 @@ function enqueue_command(){
   # logging, etc. is executable.
   chmod +x $FILE_NAME
   echo "command queued"
+  return 0
 }
 
 case "${1}" in
@@ -274,6 +280,5 @@ case "${1}" in
       die "I could not find any commands, sorry" $ERR_NO_COMMAND
     fi
     enqueue_command "${COMMAND}" "${QUEUE_DIR}"
-    exit
     ;;
 esac
