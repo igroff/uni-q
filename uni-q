@@ -1,12 +1,31 @@
 #! /usr/bin/env bash
 # vim: ft=sh
 
+#############################################################################
+###  ${ME} is used to enqueue an executable 'command' for execution at a 
+###  later date.  Specifically it's designed to attempt to enqueue any
+###  given executable for exeuction only once, that is to say only a 
+###  single instance of any command can be enqueued at a time.
+###
+#### Usage:
+####   ${ME} [process | show | clear | <path to executable>]
+####
+### If no paramters are provided, the command is expected to be available
+### via stdin.
+###
+#############################################################################
+
+# Working directory is where our action takes place the root of
+# where all the state is stored along with logs and records of
+# execution, etc.
 WORKING_DIR=${Q_WORKING_DIR:-~/.uni-q}
 LOGGING_DIR="${WORKING_DIR}/command_logs"
 QUEUE_DIR="${WORKING_DIR}/queue"
 PROCESSED_COMMAND_DIR="${WORKING_DIR}/processed"
 PROCESS_LOCK_DIR="${WORKING_DIR}/lock.dir"
 
+# A convenient list of the errors that might occur during 
+# normal proessing
 ERR_DEPENDENCY=1
 ERR_LOCK=2
 ERR_COMMAND_EXISTS=3
@@ -15,9 +34,29 @@ ERR_NO_COMMAND=5
 
 #############################################################################
 ## Utils
+function show_help(){
+  FROM_THIS_FILE=`basename $1`
+  echo
+  egrep '^#{3,4}.*$' ${FROM_THIS_FILE} | egrep -v '^#{5,}$' | sed -r -e 's[^#{3,4}*[[g' \
+    | sed -e "s[\${ME}[$FROM_THIS_FILE[g"
+  echo
+}
+
+function show_usage(){
+  FROM_THIS_FILE=`basename $1`
+  echo
+  grep '^####[[:space:]].*' ${FROM_THIS_FILE} | sed -e s[#*[[g \
+    | sed -e "s[\${ME}[$FROM_THIS_FILE[g" 
+  echo
+}
+
+# write out an error message
 function error(){ echo $1 >&2; }
+# write out an error message and exit with the given exit code
 function die(){ echo $1 >&2;  exit $2; }
 
+# various hashing methods so we can pick one based on whatever
+# mechanisms we might have around for hashing
 function hash_with_shasum() {
   if which shasum > /dev/null 2>&1 ; then
     function hasher() {
@@ -48,6 +87,10 @@ function hash_with_md5(){
   return 1
 }
 
+# all the hash_with_* functions just create a function called
+# hasher if the appropriate utils are available, this method 
+# allows the request of a specific hasher or ( more likely )
+# finds the first available leaving it as the hasher function
 function find_a_hasher() {
   case "${HASHER}" in
     "md5")
@@ -74,7 +117,13 @@ function find_a_hasher() {
 #############################################################################
 # The Program!
 
-if ! mkdir -p ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
+# first we make sure that we actually have our working dir
+mkdir -p ${WORKING_DIR}
+
+# then we try and get our lock, which is being approximated by
+# creating the lock dir, if we cannot create the dir (it already
+# exists) then didn't get the lock
+if ! mkdir ${PROCESS_LOCK_DIR} > /dev/null 2>&1; then
   die "Unable to acquire lock ${PROCESS_LOCK_DIR}" $ERR_LOCK
 fi
 
@@ -85,10 +134,17 @@ if ! find_a_hasher ; then
   die 'I could not find a hash provider!' $ERR_DEPENDENCY
 fi
 
+# make sure we have all our structure under our working dir
 mkdir -p "$LOGGING_DIR"
 mkdir -p "$QUEUE_DIR"
 mkdir -p "$PROCESSED_COMMAND_DIR"
 
+# this is the function that actually processes the work in our queue
+# it takes two parameters
+# $1 - the queue directory, the directory that holds the executable tasks
+#      that have been queued
+# $2 - The directory into which our logging and output from command
+#      execution will be written
 function process_queue() {
   local QUEUE_DIR="${1}"
   local LOG_DIR="${2}"
@@ -96,12 +152,20 @@ function process_queue() {
   echo "processing queue: ${QUEUE_DIR}"
   for command in ${QUEUE_DIR}/*
   do
+    # we can only execute things that are marked as such so we
+    # skip anything that is not executable
     [ -x "${command}" ] || continue
+    # we're gonna name our log file using the same name as the command
+    # just putting it into the log directory, as a convenience we'll add
+    # some start stop logging with timestamp info 
     FILE_NAME=$(basename "${command}")
     LOG_FILE=${LOG_DIR}/${FILE_NAME}.log
     echo "*** start " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
     $command >> ${LOG_FILE} 2>&1
     echo "*** end " $(date +"%x %X") '****************************************' >> ${LOG_FILE}
+    # once we've executed a command, we're gonna move it to the processed command directory
+    # changing the name so that it's suffixed with the time run just to make it unique
+    # the idea is to leave things around for later inspection/debugging
     mv "${command}" "${PROCESSED_COMMAND_DIR}/${FILE_NAME}.$(date +"%s")"
     DID_SOMETHING=YES
   done
@@ -111,13 +175,12 @@ function process_queue() {
   return 0
 }
 
+# rewrite our environment as a series of variable declarations followed by their associated exports
 function export_environment(){
   if echo ${OSTYPE} | grep darwin > /dev/null 2>&1
   then
-    # rewrite our environment as a series of variable declarations followed by their associated exports
     env | sed -E -e 's|^(.*)=(.*)$|export \1="\2";|g'
   else
-    # rewrite our environment as a series of variable declarations followed by their associated exports
     env | cut -f 1,2- --output-delimiter="=" -d= | sed -r -e "s[(^\w*)=(.*$)[\1='\2'; export \1;[g"
   fi
 }
@@ -126,12 +189,26 @@ function generate_queue_stamp(){
     echo "### command enqueued by uni-q " $(date +"%x %X") 
 }
 
+# this function performs the work of enqueing a command, where a command
+# is an executable file
+# params
+# $1 - The executable command to enque or nothing if the command is provide
+#      on stdin
+# $2 - The directory into which the command will be enqueued.  If the 
+#      first parameter is not an executable file, it will be assumed to
+#      be the queue dir
+
 function enqueue_command(){
   local COMMAND="${1}"
   local QUEUE_DIR="${2}"
-  if [ -x "$COMMAND" ]; then
-    # we have a file
+  # if our COMMAND refers to a non directory executable, then we handle it as such
+  if [ -x "$COMMAND" -a ! -d "$COMMAND" ]; then
+    # we'll name the file that we enqueue the same as the command, with the directory
+    # separators changed to _ so we can get something like a reference to the acutal
+    # file. this is how we enqueue only a single instance of a given executable at
+    # a time.
     FILE_NAME=${QUEUE_DIR}/$(echo $COMMAND | sed -e 's[\/[_[g')
+    # if we already have this file enqueued, we exit indicating such
     [ -x "$FILE_NAME" ] && die "command already queued" $ERR_COMMAND_EXISTS
     export_environment > $FILE_NAME
     echo "####################################################################" >> $FILE_NAME
@@ -153,6 +230,8 @@ function enqueue_command(){
     generate_queue_stamp >> $TEMP_FILE
     mv "$TEMP_FILE" "$FILE_NAME"
   fi
+  # finally we make sure our enqueued command, which is all wrapped with our environment and
+  # logging, etc. is executable.
   chmod +x $FILE_NAME
   echo "command queued"
 }
@@ -170,6 +249,10 @@ case "${1}" in
     rm -f ${QUEUE_DIR}/*
     exit
     ;;
+  "-h")
+    show_help ${0}
+    exit
+    ;;
   *)
     if [ -n "${1}" -a -f "${1}" -a -x "${1}" ]; then
       COMMAND="${1}"
@@ -179,6 +262,7 @@ case "${1}" in
       die "The parameter provided doesn't appear to refer to a an executable file, you gave me: ${1}" $ERR_INVALID_PARAM
     else
       if [ -t 0 ]; then
+        show_usage ${0}
         die "You need to provide a command either via stdin or as file on the command line." $ERR_NO_COMMAND
       fi
       # last place to look for a command is stdin
