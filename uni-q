@@ -112,10 +112,10 @@ function process_queue() {
 }
 
 function export_environment(){
-  if echo ${OSTYPE} | grep darwin
+  if echo ${OSTYPE} | grep darwin > /dev/null 2>&1
   then
     # rewrite our environment as a series of variable declarations followed by their associated exports
-    env | cut -f 1,2- --output-delimiter="=" -d= | sed -E -e 's|^(.*)=(.*)$|export \1="\2";|g'
+    env | sed -E -e 's|^(.*)=(.*)$|export \1="\2";|g'
   else
     # rewrite our environment as a series of variable declarations followed by their associated exports
     env | cut -f 1,2- --output-delimiter="=" -d= | sed -r -e "s[(^\w*)=(.*$)[\1='\2'; export \1;[g"
@@ -141,7 +141,7 @@ function enqueue_command(){
     generate_queue_stamp >> $FILE_NAME
   else
     # it's on stdin
-    TEMP_FILE=$(mktemp)
+    TEMP_FILE=$(mktemp -t uniq-temp-XXXXX)
     trap "[ -f \"$TEMP_FILE\" ] && rm $TEMP_FILE" EXIT
     export_environment > $TEMP_FILE
     echo "####################################################################" >> $TEMP_FILE

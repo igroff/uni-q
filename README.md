@@ -35,17 +35,16 @@ Processes all items in the queue in dictionary order of the command names.
 Return Codes
   * 0 - command(s) processed ( does not indicate outcome of command processing )
   * 1 - no commands processed ( queue is empty )
-  *
 
 
 ##### Working Directory
 
 uni-q manages it's queue and information about the execution of commands in its working directory which is, by default, ~/.uni-q . The structure is as follows.
 
-~/.uni-q
-    queue/
-    command_logs/
-    uni-q.log
+      ~/.uni-q
+          queue/
+          command_logs/
+          uni-q.log
     
 
 
