@@ -163,7 +163,11 @@ case "${1}" in
     exit
     ;;
   "show")
-    ls -larth ${QUEUE_DIR} | grep -v -e '[[:space:]]\.\.$' | grep -v -e '[[:space:]]\.$'
+    ls -larth ${QUEUE_DIR} | grep -v -e '[[:space:]]\.\.$' | grep -v -e '[[:space:]]\.$' | grep -v -e '^total.*$'
+    exit
+    ;;
+  "clear")
+    rm -f ${QUEUE_DIR}/*
     exit
     ;;
   *)
